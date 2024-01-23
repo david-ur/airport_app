@@ -1,0 +1,17 @@
+{
+  "app-id": "airport_app",
+  "app-name": "airport_app",
+  "simulation": true,
+  "dev-mode": true,
+  "robot-connection": {
+    "robot-id": "",
+    "ip-address": "",
+    "dds-domain": 0,
+    "robot-serial": ""
+  },
+  "logging": {
+    "file_enabled": true,
+    "folder": "log"
+  },
+  "verbose-error-print": true
+}
