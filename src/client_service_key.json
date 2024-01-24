@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "amplified-land-378609",
+  "private_key_id": "2d241271a1450a6d2af94dfe81a833e52c226c2c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCxZgeNW93VdXK+\nbFKss+fJewIkdLqD2j2XLhAIeHfvMQoo5X1ACm776ctqWCRu1KjAZhrix//hg4PF\n+u3eMmxSFcGJkE4lEp4dwjKYxjURyL2/MgTs91nNCbaJCc7uvb96HzFiaSj8FWLr\ndUIfWM1xqvcyiCt3j3la8tEklM91D0ondgqmVeE2E7nzGXgTTxMMm0++BJ8S3qdm\ng1ZM+W/yft/NIJebRmybOSPK0IV8jrJ9y1S/040h8bCiqLK8Equ8OpKCcPv7ansu\n2wQA/2tqbB8k42IQ4q4jTr2z+El0tkutkMplctgAmEvSCOfVCctTPPWAFIwBotf7\nx1vG8XtBAgMBAAECggEACxSZ5Sj3TrVy0NUYRuRH1oxh4mAOJF012qMMalMH/r87\n6LkI3T6plv+P7pkJ0Yhj7/yQsliWsYHS8cNOJ0JUBL6KI6sJToR+rtIp8ePzfaRh\nwbcAmsKKb+Wq6p1buQrOEnUvUvvJjRFS5+0fj7CuyGpK3XOm72VdSaKAEL5gxOlw\nNGexF1QpJW8/+OGo5uGF71YPS46/BbMJLPnzkucKSH04rHTGevK0uAI2dxyTUj85\ndQvxEnhHw9HFFWmhNFhz7wPIX3lKPGS/q1SZqaYDjqyO7QEkmVah+TtVvJc8pg1l\nKChQ/EGikzphs51d52kK8IWztQ60lvYtKB1i7Sn6bwKBgQD0Km9JS9mFv2sJuVq2\nKeuFPUudbtbU+Yvtah15VFbQpiTYftbpQ3XZW230jH5eZWd1w4GW2rKxpxXPeBHn\nnzMTEb/sxdlrnJT+X0IvH6G6WcYxMTQxgeKIaAZn4Pm1KdMaFWL/Uxm7xGAcmcLf\n2ucg0aTRpNaAG/Y2Kq9YBxR0owKBgQC5/yi+ub82T1Q0hFBMHlUGfGrUcqKrFVks\n/iwbJK+uXjzAIFNQ3aKBYZGOqAoE5KadXQzKeII+8M3AgpEgWpa40AUNKKXXPvjB\nUQi+eeKyjd+lX1bpHCJ+G0JlZp4RYc4S8oxXjyKubUCJpnYnMpRWq3RqmiVFrAde\nGdqxgjTqywKBgQDfokZPwfM3930YaPbWxkp7vQqW5cBLTU2GZJ0eVcs2TBaPXI2H\nFUzJil6JkGzmFMbQLANzolftM3ZckkMD/OKQ4r8BJK3hTIeC/Mjn1HcS8cr/n2uI\ntMhB29WSK5NLBUXfLBuCdCCrxE+rooHE+wCbJKlrgykcKYA3WJ1FaSapNQKBgDag\naicaBr68rc5+zdaNUguFnxqmUIBO1NISFIIkVDSyGMWUuOOXNJMrRMTRNaAaR5UQ\nLyGIIzi5ILTZpCYMdRfygIlM1uhQ5l5gnmDTC3HFmVnIlo4AZWEEQIvnh6UzRILs\nGavdriHslHfZG/qHMGoEETz96NR9oexRS5m21DPhAoGAWX8V5OjEH+MXYFPG4zst\nIglJXsemha/T6OcdWdf9HinvLyf26WV1oG3vbKU7KxGFFsRntVbjRdOCE6jFv1EM\n/4UXzcSsNwOCCAc4yZk2crvXbnimI9XIvl6eg/rg5DvbFOWpOLNNokmwqnHhCZbf\nDtlgr4+1yM0TLxFtlsNXUJA=\n-----END PRIVATE KEY-----\n",
+  "client_email": "kai-805@amplified-land-378609.iam.gserviceaccount.com",
+  "client_id": "117693700779718224140",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/kai-805%40amplified-land-378609.iam.gserviceaccount.com"
+}

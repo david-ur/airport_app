@@ -5,6 +5,7 @@ from raya.controllers.fleet_controller import FleetController
 from raya.controllers.ui_controller import UIController
 from raya.controllers.navigation_controller import NavigationController, POSITION_UNIT, ANGLE_UNIT
 from raya.controllers.leds_controller import LedsController
+from raya.controllers.sound_controller import SoundController
 from raya.exceptions import *
 from raya.enumerations import *
 from raya.tools.filesystem import open_file, check_file_exists, create_dat_folder, resolve_path
@@ -17,7 +18,7 @@ import asyncio
 
 # Import VR libraries and create a text to speech client
 from google.cloud import texttospeech
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'client_service_key.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/opt/raya_os/rayadevel/apps/airport_app/src/client_service_key.json'
 text_to_speech_client = texttospeech.TextToSpeechClient()
 
 # Status IDs pointing to obstacles detection
@@ -40,6 +41,7 @@ class RayaApplication(RayaApplicationBase):
         self.fleet: FleetController = await self.enable_controller('fleet')
         self.leds: LedsController = await self.enable_controller('leds')
         self.UI: UIController = await self.enable_controller('ui')
+        self.sound: SoundController = await self.enable_controller('sound')
         
         # Set variables
         self.i = 0
@@ -47,8 +49,8 @@ class RayaApplication(RayaApplicationBase):
     
 
         self.available_locations = [
-            {'x': 384.0, 'y': 492.0, 'angle': 40.0, 'name': 'כניסה חדר משטרה', 'default_camera': 'nav_bottom'},
             {'x': 370.0, 'y': 252.0, 'angle': -44.0, 'name': 'אזור מעליות', 'default_camera': 'nav_bottom'},
+            {'x': 384.0, 'y': 492.0, 'angle': 40.0, 'name': 'כניסה חדר משטרה', 'default_camera': 'nav_bottom'},
             {'x': 211.0, 'y': 125.0, 'angle': 27.4, 'name': 'חדר קטן גלריה', 'default_camera': 'nav_bottom'}
         ]
         self.home_position = { 'x': 102.0, 'y': 334.0, 'angle': 90.8 }
@@ -63,7 +65,7 @@ class RayaApplication(RayaApplicationBase):
         
         self.final_task_status = FLEET_FINISH_STATUS.SUCCESS
         self.final_task_message = 'Application finished successfully'
-        
+        LedsController
         self.navigation_tries = 1
         self.language = 'HEBREW'
         
@@ -85,14 +87,9 @@ class RayaApplication(RayaApplicationBase):
         #Thread loops
         self.create_task(name='ui loop', afunc=self.custom_loop, interval=10, fn=self.show_ui)
         self.log.info('loop started')
-        await self.leds.animation(
-            group='head', 
-            color='#000100', 
-            animation='SAFETY_SCANNING_COLORS', 
-            repetitions=0, 
-            speed=5,
-            execution_control=LEDS_EXECUTION_CONTROL.OVERRIDE
-            )
+        #Led setup
+        
+        await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101',speed=1)            
         
         # Setup callbacks
         self.fleet.set_msgs_from_fleet_callback(callback_async=self.fleet_cb)
@@ -105,16 +102,20 @@ class RayaApplication(RayaApplicationBase):
 
 
     async def loop(self):
-        await self.play_predefined_sound(recording_name= 'VOICE_PLEASE_MOVE_HEBREW', )
 
         # Handle navigation
+
         await self.preform_navigation(self.available_locations[self.i]['x'], self.available_locations[self.i]['y'], self.available_locations[self.i]['angle'])
         
         # Leds
         # await self.turn_on_leds(self.leds_list[self.i])
         
+        
         #Open Camera
+        await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000102',speed=1)            
+
         await self.show_camera(self.available_locations[self.i]['name'], self.available_locations[self.i]['default_camera'])
+        
         
         #Finish the app
         self.i=self.i+1
@@ -171,31 +172,26 @@ class RayaApplication(RayaApplicationBase):
         # # Obstacle management flow                                    
         # self.nav_errors = await self.check_navigation_errors()
 
-    async def turn_on_leds(self, rep_time = 3, group = 'head', animation = 'MOTION_4', color = 'BLUE'):
-        
-        # Leds dont work in simulator
-        if self.simulator is True:
-            return
-        
-        # In real environment
-        else:
-            try:
-                await self.leds.animation(
-                            group = group, 
-                            color = color, 
-                            animation = animation, 
-                            speed = 7, 
-                            repetitions = int(0.3*rep_time) + 1,
-                            wait=True)
-                
-            except Exception as e:
-                self.log.warn(f'Skipped leds, got exception {e}')
+    async def turn_on_leds(self, rep_time = 0, group = 'head', animation = 'MOTION_4', color = 'BLUE',speed = 5):
+        try:
+            await self.leds.animation(
+                        group = group, 
+                        color = color, 
+                        animation = animation, 
+                        speed = speed, 
+                        # repetitions = int(0.3*rep_time) + 1,
+                        repetitions=rep_time,
+                        execution_control=LEDS_EXECUTION_CONTROL.OVERRIDE,
+                        wait=True)
+            
+        except Exception as e:
+            self.log.warn(f'Skipped leds, got exception {e}')
 
     async def show_camera(self, title, default_camera = 'nav_top'):
         try:
-            fleet_response = await self.fleet.open_camera_stream(title=title, subtitle="", default_camera=default_camera, button_cancel_txt="cancel", button_ok_txt="ok") 
+            fleet_response = await self.fleet.open_camera_stream(title=title, subtitle="", default_camera=default_camera, button_cancel_txt="not confirm", button_ok_txt="confirm") 
             self.log.info(fleet_response['data'])
-            if fleet_response['data'] == 'ok':
+            if fleet_response['data'] == 'confirm':
                 await self.fleet.update_app_status(
                     task_id=self.fleet.task_id,
                     status=FLEET_UPDATE_STATUS.SUCCESS,
@@ -224,8 +220,16 @@ class RayaApplication(RayaApplicationBase):
             
             
     async def cb_nav_feedback(self,  error, error_msg, distance_to_goal, speed):    
-        rame=[]
-            
+        if(error==9):
+            self.log.info(f'{error}, ..... ,{error_msg}')
+            await self.turn_on_leds(rep_time = 0, animation='MOTION_1', color='RED')
+            await self.play_predefined_sound(recording_name= 'VOICE_PLEASE_MOVE_HEBREW', )
+            while(self.sound.is_playing()):
+                await self.sleep(0.01)
+        if(error==30):
+          await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101',speed=1)            
+
+        # await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101')            
     # def cb_nav_finish(self, error, error_msg):
     #     try:
     #         self.create_task(name='nav finish',afunc=self.async_cb_nav_finish,
@@ -314,12 +318,12 @@ class RayaApplication(RayaApplicationBase):
         if audio_type == 'mp3': # TODO: Add something more robust than eyed3 package
             self.audio_duration = eyed3.load(resolve_path(path)).info.time_secs
 
-        if leds is True:
-            try:
-                await self.turn_on_leds(rep_time = self.audio_duration)
+        # if leds is True:
+        #     try:
+        #         await self.turn_on_leds(rep_time = self.audio_duration)
             
-            except Exception as e:
-                self.log.warn(f'Got exception {e} in text_to_speech method, skipping leds')
+        #     except Exception as e:
+        #         self.log.warn(f'Got exception {e} in text_to_speech method, skipping leds')
 
         try:
             await self.sound.play_sound(path = f'{AUDIO_PATH}/{recording_name}.{audio_type}')
@@ -368,7 +372,7 @@ class RayaApplication(RayaApplicationBase):
     async def return_home(self):
         
         try:
-            await self.preform_navigation(self.home_position['x'], self.home_position['x'], self.home_position['angle'])
+            await self.preform_navigation(self.home_position['x'], self.home_position['y'], self.home_position['angle'])
 
         except Exception as e:
             self.log.warn(f'Got error {e}, skipping it. REMOVE THE TRY \ CATCH AFTER BUG IS FIXED')
