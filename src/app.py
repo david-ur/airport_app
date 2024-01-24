@@ -11,7 +11,8 @@ from raya.tools.filesystem import open_file, check_file_exists, create_dat_folde
 
 
 import eyed3
-from datetime import datetime
+from time import time
+import asyncio
 
 # Import VR libraries and create a text to speech client
 from google.cloud import texttospeech
@@ -55,10 +56,11 @@ class RayaApplication(RayaApplicationBase):
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/4.png',
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/5.png]',
         ]
+        self.current_screen_index = 0
+        
         self.final_task_status = FLEET_FINISH_STATUS.SUCCESS
         self.navigation_tries = 1
-        self.language == 'HEBREW'
-        self.last_ui_update_time = datetime.strptime() 
+        self.language = 'HEBREW'
         
         
         # localize
@@ -75,6 +77,9 @@ class RayaApplication(RayaApplicationBase):
         self.status = await self.nav.get_status()
         self.log.info(f'status: {self.status}')
         
+        #Thread loops
+        self.create_task(name='ui loop', afunc=self.custom_loop, interval=30, func=self.show_ui)
+        
         # # Download relevant sounds
         # self.download_all_voices()
         # self.log.info('All voices Downloaded')
@@ -82,10 +87,6 @@ class RayaApplication(RayaApplicationBase):
 
 
     async def loop(self):
-        
-        # Show UI
-        if (datetime.strptime() - self.last_ui_update_time()).total_seconds():
-            await self.show_ui()
         
         # Handle navigation
         await self.preform_navigation(self.available_locations[self.i]['x'], self.available_locations[self.i]['y'], self.available_locations[self.i]['angle'])
@@ -116,7 +117,7 @@ class RayaApplication(RayaApplicationBase):
         try:
             await self.UI.show_animation(
                 back_button_text= '',
-                url= self.screen_list[self.i],
+                url= self.screen_list[self.current_screen_index],
                 custom_style= {
                     'background': {
                             'padding': 0
@@ -127,6 +128,7 @@ class RayaApplication(RayaApplicationBase):
                     },
                 }
             )
+            self.current_screen_index = 0 if self.current_screen_index == 4 else self.current_screen_index + 1
         except Exception as e:
             self.log.warn(f'UI cannot be displayed {e}')
 
@@ -187,6 +189,14 @@ class RayaApplication(RayaApplicationBase):
                 ) 
         except Exception as e:
             self.log.warn(f'Camera stream can not be opened because {e}')
+            
+            
+    async def custom_loop(self, interval, fn):
+        last_update_time = time()
+        while True:
+            if time() - last_update_time > interval:
+               await fn()
+            await asyncio.sleep(1)
             
             
     # def cb_nav_feedback(self,  error, error_msg, distance_to_goal, speed):
