@@ -11,6 +11,7 @@ from raya.tools.filesystem import open_file, check_file_exists, create_dat_folde
 
 
 import eyed3
+import os
 from time import time
 import asyncio
 
@@ -42,13 +43,15 @@ class RayaApplication(RayaApplicationBase):
         
         # Set variables
         self.i = 0
-        self.map_name = 'airport_gallery'
+        self.map_name = 'airport_gallery_4'
+    
+
         self.available_locations = [
-            {'x': 188.0, 'y': 108.0, 'angle': 90.8, 'name': 'מעלית חיצונית'},
-            {'x': 258.0, 'y': 134.0, 'angle': 90.8, 'name': 'מעלית פנימית'},
-            {'x': 131.0, 'y': 169.0, 'angle': -10.8, 'name': 'תצפית מסדרון 1'}
-            ]
-        self.home_position = { 'x': 102.0, 'y': 64.0, 'angle': 90.8 }
+            {'x': 384.0, 'y': 492.0, 'angle': 40.0, 'name': 'כניסה חדר משטרה', 'default_camera': 'nav_bottom'},
+            {'x': 370.0, 'y': 252.0, 'angle': -44.0, 'name': 'אזור מעליות', 'default_camera': 'nav_bottom'},
+            {'x': 211.0, 'y': 125.0, 'angle': 27.4, 'name': 'חדר קטן גלריה', 'default_camera': 'nav_bottom'}
+        ]
+        self.home_position = { 'x': 102.0, 'y': 334.0, 'angle': 90.8 }
         self.screen_list= [
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/1.png',
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/2.png',
@@ -59,6 +62,8 @@ class RayaApplication(RayaApplicationBase):
         self.current_screen_index = 0
         
         self.final_task_status = FLEET_FINISH_STATUS.SUCCESS
+        self.final_task_message = 'Application finished successfully'
+        
         self.navigation_tries = 1
         self.language = 'HEBREW'
         
@@ -78,16 +83,30 @@ class RayaApplication(RayaApplicationBase):
         self.log.info(f'status: {self.status}')
         
         #Thread loops
-        self.create_task(name='ui loop', afunc=self.custom_loop, interval=30, func=self.show_ui)
+        self.create_task(name='ui loop', afunc=self.custom_loop, interval=10, fn=self.show_ui)
+        self.log.info('loop started')
+        await self.leds.animation(
+            group='head', 
+            color='#000100', 
+            animation='SAFETY_SCANNING_COLORS', 
+            repetitions=0, 
+            speed=5,
+            execution_control=LEDS_EXECUTION_CONTROL.OVERRIDE
+            )
         
-        # # Download relevant sounds
-        # self.download_all_voices()
-        # self.log.info('All voices Downloaded')
+        # Setup callbacks
+        self.fleet.set_msgs_from_fleet_callback(callback_async=self.fleet_cb)
+
+        # Download relevant sounds
+        self.log.info('starting downloading voices')
+        self.download_all_voices()
+        self.log.info('All voices Downloaded')
 
 
 
     async def loop(self):
-        
+        await self.play_predefined_sound(recording_name= 'VOICE_PLEASE_MOVE_HEBREW', )
+
         # Handle navigation
         await self.preform_navigation(self.available_locations[self.i]['x'], self.available_locations[self.i]['y'], self.available_locations[self.i]['angle'])
         
@@ -95,7 +114,7 @@ class RayaApplication(RayaApplicationBase):
         # await self.turn_on_leds(self.leds_list[self.i])
         
         #Open Camera
-        await self.show_camera(self.available_locations[self.i]['name'])
+        await self.show_camera(self.available_locations[self.i]['name'], self.available_locations[self.i]['default_camera'])
         
         #Finish the app
         self.i=self.i+1
@@ -108,9 +127,10 @@ class RayaApplication(RayaApplicationBase):
         await self.return_home()
         await self.fleet.finish_task(
                 task_id=self.fleet.task_id, 
-                result=FLEET_FINISH_STATUS.SUCCESS,
-                message=''
+                result=self.final_task_status,
+                message=self.final_task_message
             )
+        await self.leds.turn_off_group(group='head')
         self.log.info(f'Airport app finished')
         
     async def show_ui(self):
@@ -140,7 +160,7 @@ class RayaApplication(RayaApplicationBase):
                                                 pos_unit=POSITION_UNIT.PIXELS, 
                                                 ang_unit=ANGLE_UNIT.DEGREES, 
                                                 wait=True,
-                                                # callback_feedback = self.cb_nav_feedback,
+                                                callback_feedback_async = self.cb_nav_feedback,
                                                 # callback_finish = self.cb_nav_finish
                                                 )
             self.log.info(f'Naviged to {x}, {y}')
@@ -171,44 +191,40 @@ class RayaApplication(RayaApplicationBase):
             except Exception as e:
                 self.log.warn(f'Skipped leds, got exception {e}')
 
-    async def show_camera(self, title):
+    async def show_camera(self, title, default_camera = 'nav_top'):
         try:
-            fleet_response = await self.fleet.open_camera_stream(title=title, subtitle="", default_camera="nav_top", button_cancel_txt="cancel", button_ok_txt="ok") 
+            fleet_response = await self.fleet.open_camera_stream(title=title, subtitle="", default_camera=default_camera, button_cancel_txt="cancel", button_ok_txt="ok") 
             self.log.info(fleet_response['data'])
             if fleet_response['data'] == 'ok':
                 await self.fleet.update_app_status(
                     task_id=self.fleet.task_id,
                     status=FLEET_UPDATE_STATUS.SUCCESS,
-                    message='Succesfully navigated to ' + title
+                    message='אזור מאושר בהצלחה ' + title
                 )
             else:
                 await self.fleet.update_app_status(
                     task_id=self.fleet.task_id,
                     status=FLEET_UPDATE_STATUS.ERROR,
-                    message='Failed to navigate to ' + title
+                    message='אזור לא מאושר על ידי חפ"ק ' + title
                 ) 
         except Exception as e:
             self.log.warn(f'Camera stream can not be opened because {e}')
             
             
-    async def custom_loop(self, interval, fn):
-        last_update_time = time()
+    async def custom_loop(self, interval, fn):       
         while True:
-            if time() - last_update_time > interval:
-               await fn()
-            await asyncio.sleep(1)
+            await fn()
+            await asyncio.sleep(interval)
             
             
-    # def cb_nav_feedback(self,  error, error_msg, distance_to_goal, speed):
-    #     try:
-    #         self.create_task(name='nav feedback',afunc=self.async_cb_nav_feedback,
-    #                     error=error,
-    #                     error_msg=error_msg,
-    #                     distance_to_goal=distance_to_goal,
-    #                     speed=speed)
+    async def fleet_cb(self, fleet_msg):
+        if fleet_msg['command'] == 'stop_app':
+            self.final_task_message = 'Application was stopped'
+            self.finish_app()
             
-    #     except Exception as e:
-    #         self.log.warn(f'Got error in cb_nav_feedback - {e}')
+            
+    async def cb_nav_feedback(self,  error, error_msg, distance_to_goal, speed):    
+        rame=[]
             
     # def cb_nav_finish(self, error, error_msg):
     #     try:
@@ -218,7 +234,7 @@ class RayaApplication(RayaApplicationBase):
     #                     )
     #     except Exception as e:
     #         print(f'Error in cb_nav_finish {e}')
-            
+    
     # async def check_navigation_errors(self):
     #         '''
     #         INPUTS:
@@ -284,73 +300,73 @@ class RayaApplication(RayaApplicationBase):
     #         # No navigation errors found
     #         return False
         
-    # async def play_predefined_sound(self, recording_name, audio_type = 'mp3', leds = True):
-    #     '''
-    #     INPUTS:
-    #         recording_name - the name of the recording ; str
+    async def play_predefined_sound(self, recording_name, audio_type = 'mp3', leds = True):
+        '''
+        INPUTS:
+            recording_name - the name of the recording ; str
         
-    #     OUTPUTS:
-    #         This function has no outputs. It plays a sound
-    #     '''
+        OUTPUTS:
+            This function has no outputs. It plays a sound
+        '''
 
-    #     path = f'{AUDIO_PATH}/{recording_name}.{audio_type}'
+        path = f'{AUDIO_PATH}/{recording_name}.{audio_type}'
 
-    #     if audio_type == 'mp3': # TODO: Add something more robust than eyed3 package
-    #         self.audio_duration = eyed3.load(resolve_path(path)).info.time_secs
+        if audio_type == 'mp3': # TODO: Add something more robust than eyed3 package
+            self.audio_duration = eyed3.load(resolve_path(path)).info.time_secs
 
-    #     if leds is True:
-    #         try:
-    #             await self.turn_on_leds(rep_time = self.audio_duration)
+        if leds is True:
+            try:
+                await self.turn_on_leds(rep_time = self.audio_duration)
             
-    #         except Exception as e:
-    #             self.log.warn(f'Got exception {e} in text_to_speech method, skipping leds')
+            except Exception as e:
+                self.log.warn(f'Got exception {e} in text_to_speech method, skipping leds')
 
-    #     try:
-    #         await self.sound.play_sound(path = f'{AUDIO_PATH}/{recording_name}.{audio_type}')
+        try:
+            await self.sound.play_sound(path = f'{AUDIO_PATH}/{recording_name}.{audio_type}')
 
-    #     except Exception as e:
-    #         self.log.warning(f'Skipped playing sound, got error {e}')   
+        except Exception as e:
+            self.log.warning(f'Skipped playing sound, got error {e}')   
 
-    # # Download a voice
-    # def download_voice(self, text, file_name, language = 'en-GB', name = 'en-GB-Neural2-B', audio_type = 'mp3', dynamic = False):
-    #     '''
-    #     INPUTS:
-    #             text - A text for the robot to download
+    # Download a voice
+    def download_voice(self, text, file_name, language = 'en-GB', name = 'en-GB-Neural2-B', audio_type = 'mp3', dynamic = False):
+        '''
+        INPUTS:
+                text - A text for the robot to download
         
-    #     OUTPUTS:
-    #             This function doesn't return any outputs, it downloads 'text'
-    #     '''
+        OUTPUTS:
+                This function doesn't return any outputs, it downloads 'text'
+        '''
 
-    #     # Get relevant path
-    #     path = f'{AUDIO_PATH}/{file_name}.{audio_type}'
+        # Get relevant path
+        path = f'{AUDIO_PATH}/{file_name}.{audio_type}'
 
-    #     # If the voice isnt downloaded already, download it
-    #     if not check_file_exists(path) or dynamic is True: 
+        # If the voice isnt downloaded already, download it
+        if not check_file_exists(path) or dynamic is True: 
 
-    #         self.log.info(f'Downloading audio: \'{path}\'')
-    #         synthesized_input = texttospeech.SynthesisInput(text = text)
-    #         voice = texttospeech.VoiceSelectionParams(
-    #         language_code = language,
-    #         name = name,
-    #         ssml_gender = texttospeech.SsmlVoiceGender.MALE)
+            self.log.info(f'Downloading audio: \'{path}\'')
+            synthesized_input = texttospeech.SynthesisInput(text = text)
+            voice = texttospeech.VoiceSelectionParams(
+            language_code = language,
+            name = name,
+            ssml_gender = texttospeech.SsmlVoiceGender.MALE)
 
-    #         audio_config = texttospeech.AudioConfig(audio_encoding = texttospeech.AudioEncoding.MP3)
-    #         response = text_to_speech_client.synthesize_speech(input = synthesized_input, voice = voice, audio_config = audio_config)
+            audio_config = texttospeech.AudioConfig(audio_encoding = texttospeech.AudioEncoding.MP3)
+            response = text_to_speech_client.synthesize_speech(input = synthesized_input, voice = voice, audio_config = audio_config)
 
-    #         with open_file(path, 'wb') as gary_response:
-    #             gary_response.write(response.audio_content)
+            with open_file(path, 'wb') as gary_response:
+                gary_response.write(response.audio_content)
 
-    #     # Do nothing if the voice is already downloadaed
-    #     # else:
-    #     #     pass
+        # Do nothing if the voice is already downloadaed
+        # else:
+        #     pass
         
-    # def download_all_voices(self):
-    #     create_dat_folder(AUDIO_PATH)
-    #     self.download_voice(text = 'בבקשה פנו את הדרך', language = 'he-IL', name = 'he-IL-Wavenet-D', file_name = 'VOICE_PLEASE_MOVE_HEBREW')
+    def download_all_voices(self):
+        create_dat_folder(AUDIO_PATH)
+        self.download_voice(text = 'בבקשה פנו את הדרך', language = 'he-IL', name = 'he-IL-Wavenet-D', file_name = 'VOICE_PLEASE_MOVE_HEBREW')
          
     # Return home
     async def return_home(self):
-        # await self.ui.display_screen(**UI_NAVIGATING_TO_HOME)
+        
         try:
             await self.preform_navigation(self.home_position['x'], self.home_position['x'], self.home_position['angle'])
 
