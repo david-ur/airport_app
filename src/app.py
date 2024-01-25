@@ -45,15 +45,20 @@ class RayaApplication(RayaApplicationBase):
         
         # Set variables
         self.i = 0
-        self.map_name = 'airport_gallery_4'
+        self.map_name = 'airport_gallery_rebuilt'
     
 
         self.available_locations = [
-            {'x': 370.0, 'y': 252.0, 'angle': -44.0, 'name': 'אזור מעליות', 'default_camera': 'nav_bottom'},
-            {'x': 384.0, 'y': 492.0, 'angle': 40.0, 'name': 'כניסה חדר משטרה', 'default_camera': 'nav_bottom'},
-            {'x': 211.0, 'y': 125.0, 'angle': 27.4, 'name': 'חדר קטן גלריה', 'default_camera': 'nav_bottom'}
+            {'x': 207.0, 'y': 847.0, 'angle': -44.0, 'name': 'נקודה רחוקה - גלריה', 'default_camera': 'nav_bottom'},
+            {'x': 346.0, 'y': 716.0, 'angle': -44.0, 'name': 'אמצע מרחב פתוח', 'default_camera': 'nav_bottom'},
+            {'x': 434.0, 'y': 715.0, 'angle': -44.0, 'name': 'פח1', 'default_camera': 'nav_bottom'},
+            {'x': 492.0, 'y': 590.0, 'angle': -44.0, 'name': 'נקודה אחרי הפח', 'default_camera': 'nav_bottom'},
+            {'x': 339.0, 'y': 353.0, 'angle': 27.4, 'name': 'פח 2', 'default_camera': 'nav_bottom'},
+            {'x': 419.0, 'y': 244.0, 'angle': 27.4, 'name': 'נקודה רחוקה - אחרי הדלתות', 'default_camera': 'nav_bottom'},
+            {'x': 511.0, 'y': 336.0, 'angle': 27.4, 'name': 'דלתות', 'default_camera': 'nav_bottom'},
+            {'x': 658.0, 'y': 453.0, 'angle': 27.4, 'name': 'חדר בקרה - חוץ', 'default_camera': 'nav_bottom'}
         ]
-        self.home_position = { 'x': 102.0, 'y': 334.0, 'angle': 90.8 }
+        self.home_position = { 'x': 615.0, 'y': 551.0, 'angle': 90.8 }
         self.screen_list= [
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/1.png',
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/2.png',
@@ -125,13 +130,13 @@ class RayaApplication(RayaApplicationBase):
 
     async def finish(self):
         # Finishing instructions
+        await self.leds.turn_off_group(group='head')
         await self.return_home()
         await self.fleet.finish_task(
                 task_id=self.fleet.task_id, 
                 result=self.final_task_status,
                 message=self.final_task_message
             )
-        await self.leds.turn_off_group(group='head')
         self.log.info(f'Airport app finished')
         
     async def show_ui(self):
@@ -165,7 +170,7 @@ class RayaApplication(RayaApplicationBase):
                                                 # callback_finish = self.cb_nav_finish
                                                 )
             self.log.info(f'Naviged to {x}, {y}')
-        except RayaNoPathToGoal as e:
+        except RayaException as e:
             self.log.warn(f'Navigation failed because {e}')
             self.finish_app()
         
@@ -220,14 +225,16 @@ class RayaApplication(RayaApplicationBase):
             
             
     async def cb_nav_feedback(self,  error, error_msg, distance_to_goal, speed):    
-        if(error==9):
-            self.log.info(f'{error}, ..... ,{error_msg}')
-            await self.turn_on_leds(rep_time = 0, animation='MOTION_1', color='RED')
-            await self.play_predefined_sound(recording_name= 'VOICE_PLEASE_MOVE_HEBREW', )
-            while(self.sound.is_playing()):
-                await self.sleep(0.01)
-        if(error==30):
-          await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101',speed=1)            
+        if not self.sound.is_playing() :
+            if error==9: 
+                self.log.info(f'{error}, ..... ,{error_msg}')
+                await self.turn_on_leds(rep_time = 0, animation='MOTION_1', color='RED')
+                await self.play_predefined_sound(recording_name= 'VOICE_PLEASE_MOVE_HEBREW', )
+            
+            # while(self.sound.is_playing()):
+            if(error==30):
+            #     await self.sleep(0.01)
+                await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101',speed=1)            
 
         # await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000101')            
     # def cb_nav_finish(self, error, error_msg):
@@ -378,4 +385,4 @@ class RayaApplication(RayaApplicationBase):
             self.log.warn(f'Got error {e}, skipping it. REMOVE THE TRY \ CATCH AFTER BUG IS FIXED')
 
             # Obstacle management flow                                    
-            self.nav_errors = await self.check_navigation_errors()
+            # self.nav_errors = await self.check_navigation_errors()
