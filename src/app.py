@@ -47,18 +47,21 @@ class RayaApplication(RayaApplicationBase):
         self.i = 0
         self.map_name = 'airport_gallery_rebuilt'
     
-
-        self.available_locations = [
+        self.available_locations_c = [ 
+                                      
+            {'x': 504.0, 'y': 404.0, 'angle': 27.4, 'name': 'דלתות', 'default_camera': 'nav_bottom'},
+            {'x': 419.0, 'y': 244.0, 'angle': 27.4, 'name': 'נקודה רחוקה - אחרי הדלתות', 'default_camera': 'nav_bottom'},
+            
             {'x': 207.0, 'y': 847.0, 'angle': -44.0, 'name': 'נקודה רחוקה - גלריה', 'default_camera': 'nav_bottom'},
             {'x': 346.0, 'y': 716.0, 'angle': -44.0, 'name': 'אמצע מרחב פתוח', 'default_camera': 'nav_bottom'},
             {'x': 434.0, 'y': 715.0, 'angle': -44.0, 'name': 'פח1', 'default_camera': 'nav_bottom'},
             {'x': 492.0, 'y': 590.0, 'angle': -44.0, 'name': 'נקודה אחרי הפח', 'default_camera': 'nav_bottom'},
-            {'x': 339.0, 'y': 353.0, 'angle': 27.4, 'name': 'פח 2', 'default_camera': 'nav_bottom'},
-            {'x': 419.0, 'y': 244.0, 'angle': 27.4, 'name': 'נקודה רחוקה - אחרי הדלתות', 'default_camera': 'nav_bottom'},
-            {'x': 511.0, 'y': 336.0, 'angle': 27.4, 'name': 'דלתות', 'default_camera': 'nav_bottom'},
-            {'x': 658.0, 'y': 453.0, 'angle': 27.4, 'name': 'חדר בקרה - חוץ', 'default_camera': 'nav_bottom'}
+           ]
+
+            # {'x': 339.0, 'y': 353.0, 'angle': 27.4, 'name': 'פח 2', 'default_camera': 'nav_bottom'},
+        self.available_locations = [
+            {'x': 658.0, 'y': 453.0, 'angle': 27.4, 'name': 'חדר בקרה - חוץ', 'default_camera': 'nav_bottom'},
         ]
-        self.home_position = { 'x': 615.0, 'y': 551.0, 'angle': 90.8 }
         self.screen_list= [
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/1.png',
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/2.png',
@@ -67,6 +70,9 @@ class RayaApplication(RayaApplicationBase):
         'https://fms-s3-dev.s3.eu-central-1.amazonaws.com/airport/%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98+%D7%A0%D7%AA%D7%91%D7%92+-+%D7%9E%D7%A1%D7%9B%D7%99%D7%9D/5.png]',
         ]
         self.current_screen_index = 0
+        self.point_b = { 'x': 606.0, 'y':489.0, 'angle': -140.0 }
+        self.home_position = { 'x': 615.0, 'y': 551.0, 'angle': 90.8 }
+        self.start_navigation_to_c = False
         
         self.final_task_status = FLEET_FINISH_STATUS.SUCCESS
         self.final_task_message = 'Application finished successfully'
@@ -109,8 +115,15 @@ class RayaApplication(RayaApplicationBase):
     async def loop(self):
 
         # Handle navigation
-
-        await self.preform_navigation(self.available_locations[self.i]['x'], self.available_locations[self.i]['y'], self.available_locations[self.i]['angle'])
+        index = self.i - len(self.available_locations)
+        if self.i < len(self.available_locations):
+            await self.preform_navigation(self.available_locations[self.i]['x'], self.available_locations[self.i]['y'], self.available_locations[self.i]['angle'])
+        elif self.i == len(self.available_locations):
+            await self.preform_navigation(self.point_b['x'], self.point_b['y'], self.point_b['angle'])
+            os.system('ros2 param set /rtabmap Kp/MaxFeatures "\'-1\'"')
+            await self.preform_navigation(self.available_locations_c[index]['x'], self.available_locations_c[index]['y'], self.available_locations_c[index]['angle'])
+        else:
+            await self.preform_navigation(self.available_locations_c[index]['x'], self.available_locations_c[index]['y'], self.available_locations_c[index]['angle'])
         
         # Leds
         # await self.turn_on_leds(self.leds_list[self.i])
@@ -119,18 +132,25 @@ class RayaApplication(RayaApplicationBase):
         #Open Camera
         await self.turn_on_leds(rep_time = 0, animation='SAFETY_SCANNING_COLORS', color='#000102',speed=1)            
 
-        await self.show_camera(self.available_locations[self.i]['name'], self.available_locations[self.i]['default_camera'])
-        
+        if self.i < len(self.available_locations):
+            await self.show_camera(self.available_locations[self.i]['name'], self.available_locations[self.i]['default_camera'])
+        else:
+            await self.show_camera(self.available_locations_c[index]['name'], self.available_locations_c[index]['default_camera'])
         
         #Finish the app
         self.i=self.i+1
-        if self.i > 2:
-            self.finish_app()
+        if self.i > len(self.available_locations) - 1:
+            if self.i > len(self.available_locations) + len(self.available_locations_c) - 1 and self.start_navigation_to_c:
+                self.finish_app()
+            else:
+                self.start_navigation_to_c = True
         
 
     async def finish(self):
         # Finishing instructions
         await self.leds.turn_off_group(group='head')
+        os.system('ros2 param set /rtabmap Kp/MaxFeatures "\'500\'"')
+        await self.preform_navigation(self.point_b['x'], self.point_b['y'], self.point_b['angle'])
         await self.return_home()
         await self.fleet.finish_task(
                 task_id=self.fleet.task_id, 
